@@ -5,6 +5,9 @@ Lezioni per l'esame **LanguageCert / EISOL Communicator B2 – Speaking**, organ
 - **58 lezioni** in 7 capitoli: orientamento, Part 1, Part 2, Part 3, Part 4, grammatica per parlare, simulazioni complete
 - **Tre modi di navigare**: per *capitolo*, per *argomento* (temi e abilità) e per *tempo* (percorso di 14 giorni oppure lezioni da 10/15/20/30 minuti)
 - In ogni lezione: risposte modello da aprire dopo aver provato, frasi pronte con pulsante *ascolta*, errori tipici (corretto/sbagliato), esercizi con **timer** (anche 30″ + 2′ per la Part 4)
+- **Correzione delle risposte**: sotto ogni esercizio c'è il riquadro *La tua risposta*. Premi il microfono della tastiera del telefono, parla, poi:
+  - nella pagina su claude.ai premi **Correggimi**: arrivano la versione corretta, al massimo 3 errori (con priorità a tempi verbali, articoli, preposizioni, calchi, connettori), il livello orientativo e una cosa su cui concentrarsi;
+  - su GitHub Pages o dal file sul computer il pulsante diventa **Copia per la chat di correzione**: incolla il testo nella chat del progetto EISOL B2 e ricevi la stessa correzione.
 - I progressi (“segna come completata”) restano salvati nel browser
 
 ## Come usarlo

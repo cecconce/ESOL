@@ -209,6 +209,21 @@ details.reveal > summary{cursor:pointer;font-weight:700;color:var(--accent);padd
 .lfoot a.btn{text-decoration:none;color:var(--ink)}
 .empty{color:var(--muted)}
 footer.site{border-top:1px solid var(--line);padding-block:18px;font-size:.82rem;color:var(--muted)}
+/* feedback */
+.fb{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:grid;gap:8px}
+.fb label{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.fb textarea{width:100%;min-height:96px;resize:vertical;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:.95rem;line-height:1.5}
+.fb .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fb .hint{font-size:.8rem;color:var(--muted)}
+.fb-out{display:grid;gap:10px}
+.fb-out:empty{display:none}
+.fb-out .status{font-size:.9rem;color:var(--muted);margin:0}
+.fb-card{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:grid;gap:12px}
+.fb-card p{margin:0}
+.fb-card h4{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:4px}
+.fb-card .lvl{display:inline-block;font-family:var(--f-mono);font-weight:700;padding:2px 10px;border-radius:99px;background:var(--ink);color:var(--bg)}
+.fb-card .focus{border-left:3px solid var(--c);padding-left:10px}
+.fb-card .fix .row{background:var(--surface);display:grid}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 
@@ -356,9 +371,9 @@ function blk(b){
     case 'fix': return `<div class="blk">${H}<div class="fix">${b.items.map(([w,r,why,tg])=>`<div class="row"><span class="w">${w}</span><span class="r">${r}</span><span class="why">${why||''}${tg?`<span class="tag">${TAGFIX[tg]||tg}</span>`:''}</span></div>`).join('')}</div></div>`;
     case 'vocab': return `<div class="blk">${H}<div style="overflow-x:auto"><table class="vocab">${b.items.map(([en,it])=>`<tr><td>${en}</td><td>${it}</td></tr>`).join('')}</table></div></div>`;
     case 'dlg': return `<div class="blk">${H}<div class="dlg">${b.ctx?`<div class="ctx">${b.ctx}</div>`:''}${b.lines.map(([w,t])=>`<div class="line${w==='You'?' you':''}"><span class="who">${esc(w)}</span><span>${t}</span></div>`).join('')}<div>${sayBtn(b.lines.map(x=>x[1]).join(' '))}</div></div></div>`;
-    case 'task': return `<div class="blk">${H}<div class="card-task"><div class="lbl">Esercizio${b.timer?` · ${fmtT(b.timer)}${b.prep?` (+ ${b.prep}″ per pensare)`:''}`:''}</div>${b.html}${b.timer?timerHTML(b.timer,b.prep||0):''}</div></div>`;
+    case 'task': return `<div class="blk">${H}<div class="card-task"><div class="lbl">Esercizio${b.timer?` · ${fmtT(b.timer)}${b.prep?` (+ ${b.prep}″ per pensare)`:''}`:''}</div>${b.html}${b.timer?timerHTML(b.timer,b.prep||0):''}${fbHTML(b.h||'Esercizio', b.html)}</div></div>`;
     case 'neg': return `<div class="blk">${H}<p>${b.brief}</p><div class="split"><div class="sheet"><h3>Le tue idee</h3><ul>${b.you.map(i=>`<li>${i}</li>`).join('')}</ul></div><div class="sheet"><h3>Idee dell'esaminatore</h3><ul>${b.exam.map(i=>`<li>${i}</li>`).join('')}</ul></div></div></div>`;
-    case 'mono': return `<div class="blk">${H}<div class="card-task"><div class="lbl">Il compito</div><p><strong>${b.topic}</strong></p>${b.prompts?`<ul class="plain">${b.prompts.map(p=>`<li>${p}</li>`).join('')}</ul>`:''}${timerHTML(120,30)}</div>
+    case 'mono': return `<div class="blk">${H}<div class="card-task"><div class="lbl">Il compito</div><p><strong>${b.topic}</strong></p>${b.prompts?`<ul class="plain">${b.prompts.map(p=>`<li>${p}</li>`).join('')}</ul>`:''}${timerHTML(120,30)}${fbHTML('Part 4 – monologo', b.topic+' '+(b.prompts||[]).join(' '))}</div>
       <details class="reveal"><summary>Appunti in 30 secondi (esempio)</summary><div class="sheet"><ul>${b.notes.map(n=>`<li>${n}</li>`).join('')}</ul></div></details>
       <details class="reveal"><summary>Monologo modello (circa 2 minuti)</summary><div class="mono-model">${b.model.map(p=>`<p>${p}</p>`).join('')}${sayBtn(b.model.join(' '))}</div></details>
       ${b.follow?`<details class="reveal"><summary>Domande di approfondimento</summary><div class="qa" style="margin-top:6px">${b.follow.map(it=>`<details><summary><span>${esc(it.q)}</span><span class="hint">risposta modello</span></summary><div class="ans"><p>${it.a} ${sayBtn(it.a)}</p></div></details>`).join('')}</div></details>`:''}</div>`;
@@ -396,8 +411,99 @@ document.addEventListener('click', e => {
   tick(); s.iv = setInterval(tick, 250);
 });
 
+
+// ---------- feedback (correzione) ----------
+let curLesson = null, sampleFn = null;
+const PART = {c0:'Esame in generale', p1:'Part 1 (domande personali)', p2:'Part 2 (role-play)', p3:'Part 3 (negoziazione)', p4:'Part 4 (monologo)', gr:'Grammatica per parlare', mk:'Simulazione completa'};
+const CRIT = {
+  p1:"Valuta anche: ha risposto subito alla domanda, con un motivo e un esempio (formula A·R·E)? Il tempo verbale segue quello della domanda?",
+  p2:"Valuta anche: ha usato la frase funzionale giusta (scusarsi, proporre, chiedere, lamentarsi…) con un registro cortese ma naturale? Ha sviluppato con un motivo o una proposta?",
+  p3:"Valuta anche: ha commentato le idee dell'altro, proposto un compromesso e portato verso una decisione? Ha usato frasi di accordo/disaccordo?",
+  p4:"Valuta anche: ha raccontato UNA sola storia seguendo le 5 tappe (introduzione, contesto, momento chiave, risultato, riflessione)? I dettagli sono chiari e non eccessivi? I connettori parlati sono presenti?",
+  mk:"Valuta come un esaminatore LanguageCert B2 le parti presenti nel testo."
+};
+function fbHTML(title, taskHtml){
+  const ctx = (title+' — '+String(taskHtml||'')).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,1500);
+  return `<div class="fb" data-ctx="${esc(ctx)}">
+    <label>La tua risposta (per la correzione)</label>
+    <textarea placeholder="Premi il microfono della tastiera del telefono e parla: la risposta viene scritta qui. Oppure scrivila."></textarea>
+    <div class="row"><button class="btn primary fb-go" type="button">${sampleFn?'Correggimi':'Copia per la chat di correzione'}</button><span class="hint">${sampleFn?'La correzione arriva qui sotto, in italiano.':'Poi incollala nella chat del progetto EISOL.'}</span></div>
+    <div class="fb-out" aria-live="polite"></div></div>`;
+}
+function buildPrompt(ctx, answer){
+  const ch = curLesson ? curLesson.ch : 'p1';
+  return `Sei un esaminatore e coach per l'esame LanguageCert / EISOL Communicator B2 Speaking. Lo studente è Pierluigi, italiano, al terzo tentativo: bocciato due volte non per le idee ma per imprecisioni formali sotto pressione.
+I suoi errori ricorrenti, da controllare per primi: (1) tempi verbali, soprattutto past simple vs present perfect; (2) articoli; (3) preposizioni; (4) calchi dall'italiano; (5) connettori che spariscono nel parlato. Nella Part 4 anche la coerenza della storia.
+
+Parte d'esame: ${PART[ch]||'Speaking'}
+Lezione: ${curLesson ? curLesson.n+' '+curLesson.title : ''}
+Compito: ${ctx}
+
+Trascrizione della risposta parlata (fatta con la dettatura del telefono: ignora punteggiatura e maiuscole, e non contare come errori le parole palesemente sbagliate dal riconoscimento vocale):
+<<<
+${answer}
+>>>
+
+${CRIT[ch]||''}
+Regole: segnala AL MASSIMO 3 errori, i più importanti, con priorità a quelli della lista. Non fare elenchi esaustivi. Sii diretto e pratico. Spiegazioni in italiano, frasi corrette in inglese naturale B2 (non molto più difficili di quello che ha detto).
+Rispondi SOLO con un oggetto JSON con questa forma:
+{"corretta": "la sua risposta riscritta corretta in inglese, mantenendo il suo contenuto e il suo stile",
+ "errori": [{"sbagliato": "frase o pezzo come l'ha detto", "corretto": "versione corretta", "perche": "spiegazione breve in italiano", "tipo": "tempi|articoli|preposizioni|calco|connettori|altro"}],
+ "bene": "una cosa fatta bene, in italiano, una frase",
+ "livello": "A2|B1|B1+|B2",
+ "focus": "l'unica cosa su cui concentrarsi la prossima volta, in italiano, una frase"}`;
+}
+const TIPO = {tempi:'tempi verbali · ricorrente', articoli:'articoli · ricorrente', preposizioni:'preposizioni · ricorrente', calco:'calco · ricorrente', connettori:'connettori · ricorrente', altro:'altro'};
+function renderFb(r){
+  const errs = Array.isArray(r.errori) ? r.errori.slice(0,3) : [];
+  return `<div class="fb-card">
+    <div><h4>Versione corretta</h4><p class="corr">${esc(r.corretta||'')} ${sayBtn(r.corretta||'')}</p></div>
+    <div><h4>Errori principali</h4>${errs.length?`<div class="fix">${errs.map(e=>`<div class="row"><span class="w">${esc(e.sbagliato||'')}</span><span class="r">${esc(e.corretto||'')}</span><span class="why">${esc(e.perche||'')}<span class="tag">${esc(TIPO[e.tipo]||e.tipo||'')}</span></span></div>`).join('')}</div>`:'<p>Nessun errore importante. Ottimo.</p>'}</div>
+    ${r.bene?`<div><h4>Fatto bene</h4><p>${esc(r.bene)}</p></div>`:''}
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><h4 style="margin:0">Livello orientativo</h4><span class="lvl">${esc(r.livello||'?')}</span></div>
+    ${r.focus?`<div class="focus"><h4>Prossima volta</h4><p>${esc(r.focus)}</p></div>`:''}
+  </div>`;
+}
+const FB_ERR = {not_granted:'Correzione non autorizzata. Usa “Copia per la chat di correzione”.', sampling_disabled:'Claude non è disponibile qui. Usa “Copia per la chat di correzione”.', rate_limited:'Troppe richieste o limite di utilizzo raggiunto. Riprova tra poco.', session_expired:'Accedi di nuovo a Claude e riprova.', prompt_too_large:'Risposta troppo lunga: correggine una parte alla volta.', refused:'La correzione non è andata a buon fine. Riformula e riprova.', invalid_json:'Risposta non leggibile. Premi di nuovo “Correggimi”.'};
+function setCopyMode(){
+  document.querySelectorAll('.fb-go').forEach(x=>{ x.textContent='Copia per la chat di correzione'; x.nextElementSibling.textContent='Poi incollala nella chat del progetto EISOL.'; });
+}
+async function copyText(t, ta){
+  try { await navigator.clipboard.writeText(t); return true; }
+  catch(e){ ta.value = t; ta.select(); return false; }
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('.fb-go'); if(!b) return;
+  const box = b.closest('.fb'), ta = $('textarea',box), out = $('.fb-out',box);
+  const ans = ta.value.trim();
+  if (ans.length < 15){ out.innerHTML = '<p class="status">Prima detta o scrivi la tua risposta (almeno una frase).</p>'; return; }
+  const prompt = buildPrompt(box.dataset.ctx, ans);
+  if (!sampleFn){
+    const ok = await copyText(prompt, ta);
+    out.innerHTML = `<p class="status">${ok?'Copiato. Ora incollalo nella chat del progetto EISOL B2 e invia: riceverai la correzione.':'Non riesco a copiare in automatico: ho messo il testo nel riquadro già selezionato. Copialo e incollalo nella chat del progetto.'}</p>`;
+    return;
+  }
+  b.disabled = true; out.innerHTML = '<p class="status">Sto correggendo… (di solito 10–30 secondi)</p>';
+  try {
+    const r = await sampleFn.json(prompt);
+    out.innerHTML = renderFb(r || {});
+  } catch(err){
+    const code = err && err.code;
+    if (['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(code)){ sampleFn = null; setCopyMode(); }
+    if (code === 'cancelled') { out.innerHTML = ''; }
+    else out.innerHTML = `<p class="status">${FB_ERR[code] || 'Qualcosa non ha funzionato. Riprova tra qualche secondo.'}</p>`;
+  } finally { b.disabled = false; }
+});
+if (window.claude && typeof window.claude.use === 'function'){
+  window.claude.use('sample').then(fn => {
+    if (!fn) return; sampleFn = fn;
+    document.querySelectorAll('.fb-go').forEach(x=>{ x.textContent='Correggimi'; x.nextElementSibling.textContent='La correzione arriva qui sotto, in italiano.'; });
+  }).catch(()=>{});
+}
+
 function viewLesson(id){
   const l = byId[id]; if(!l) return viewChapters();
+  curLesson = l;
   const c = chById[l.ch];
   const idx = L.indexOf(l), prev = L[idx-1], next = L[idx+1];
   setTab(null);
